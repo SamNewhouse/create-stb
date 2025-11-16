@@ -12,7 +12,8 @@
     "create-stb": "./dist/create-stb.js"
   },
   "files": [
-    "dist",
+    "dist/create-stb.js",
+    "dist/create-stb.d.ts",
     "README.md",
     "LICENSE",
     "package.json",
@@ -20,11 +21,15 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "jest --roots ./bin"
   },
   "devDependencies": {
+    "@types/jest": "30.0.0",
     "@types/node": "20.19.25",
+    "jest": "^30.2.0",
     "prettier": "3.6.2",
+    "ts-jest": "29.4.5",
     "typescript": "5.9.3"
   },
   "homepage": "https://github.com/SamNewhouse/create-stb",
