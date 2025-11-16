@@ -2,10 +2,6 @@
   "name": "create-stb",
   "version": "1.0.0",
   "description": "create-stb boilerplate template",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/SamNewhouse/create-stb.git"
-  },
   "license": "MIT",
   "scripts": {
     "build": "tsc",
@@ -19,7 +15,6 @@
     "tables:create": "ts-node src/scripts/create-tables.ts",
     "tables:seed": "ts-node src/scripts/seed-tables.ts"
   },
-  "author": "Sam Newhouse",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "3.910.0",
     "@aws-sdk/util-dynamodb": "3.910.0",
@@ -35,5 +30,10 @@
     "serverless": "4.20.2",
     "serverless-offline": "14.4.0",
     "typescript": "5.9.3"
+  },
+  "author": "Sam Newhouse",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/SamNewhouse/create-stb.git"
   }
 }
