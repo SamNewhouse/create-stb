@@ -1,0 +1,22 @@
+# Ignore source TypeScript and test files
+src/
+bin/
+test/
+tests/
+*.ts
+*.map
+
+# Ignore build tools, configs, IDE files
+tsconfig.json
+tsconfig.*.json
+.vscode/
+.idea/
+*.log
+
+# Ignore docs and assets not needed for install
+docs/
+.DS_Store
+
+# Ignore CLI dev/output files not needed for package consumers
+scripts/
+npm-debug.log
