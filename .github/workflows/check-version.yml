@@ -1,0 +1,78 @@
+name: Check version
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened]
+    paths-ignore:
+      - ".github/workflows/**"
+      - "renovate.json"
+
+permissions:
+  contents: write
+
+jobs:
+  check_version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24.x"
+
+      - name: Get package.json version from main branch
+        id: main_version
+        run: |
+          git fetch origin main
+          main_version=$(jq -r .version <(git show origin/main:package.json))
+          echo "main_version=$main_version" >> $GITHUB_ENV
+
+      - name: Get package.json version from current branch
+        id: current_version
+        run: |
+          branch_version=$(jq -r .version package.json)
+          echo "branch_version=$branch_version" >> $GITHUB_ENV
+
+      - name: Compare versions and update if necessary
+        id: compare_versions
+        run: |
+          if [ "$branch_version" = "$main_version" ]; then
+            IFS='.' read -r major minor patch <<< "$branch_version"
+            patch=$((patch + 1))
+            new_version="$major.$minor.$patch"
+            echo "New version: $new_version"
+            jq --arg new_version "$new_version" '.version = $new_version' package.json > package.json.tmp && mv package.json.tmp package.json
+            echo "Version updated to $new_version"
+            echo "version_updated=true" >> $GITHUB_ENV
+            echo "new_version=$new_version" >> $GITHUB_ENV
+          else
+            echo "Versions are different. No update needed."
+            echo "version_updated=false" >> $GITHUB_ENV
+          fi
+
+      - name: Update version in package-lock
+        if: env.version_updated == 'true'
+        run: npm install
+
+      - name: Commit version bump
+        if: env.version_updated == 'true'
+        run: |
+          git config --global user.name "SamNewhouse"
+          git config --global user.email "hello@samnewhouse.co.uk"
+          git add package.json package-lock.json
+          git commit -m "Changed version to ${{ env.new_version }}"
+          git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/SamNewhouse/create-stb.git
+          git pull --rebase origin ${{ github.head_ref }}
+          git push origin HEAD:${{ github.head_ref }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Success
+        run: echo "Version check and update workflow completed successfully."
+
+      - name: Failure
+        if: failure()
+        run: echo "Version check and update workflow failed."
