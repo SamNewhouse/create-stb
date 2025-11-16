@@ -1,10 +1,10 @@
 {
-  "name": "create-ntb",
+  "name": "create-stb",
   "version": "1.0.0",
-  "description": "create-ntb boilerplate template",
+  "description": "create-stb boilerplate template",
   "repository": {
     "type": "git",
-    "url": "git://github.com/SamNewhouse/serverless-typescript-boilerplate.git"
+    "url": "git://github.com/SamNewhouse/create-stb.git"
   },
   "license": "MIT",
   "scripts": {

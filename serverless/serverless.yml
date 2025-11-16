@@ -1,4 +1,4 @@
-service: serverless-typescript-boilerplate
+service: create-stb
 
 provider:
   name: aws

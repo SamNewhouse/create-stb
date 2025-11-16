@@ -20,3 +20,15 @@ docs/
 # Ignore CLI dev/output files not needed for package consumers
 scripts/
 npm-debug.log
+
+# Ignore test files in dist
+dist/*.test.*
+dist/**/*.test.*
+
+# Ignore all source test files
+**/*.test.ts
+**/*.spec.ts
+
+# Ignore test folders
+test/
+tests/

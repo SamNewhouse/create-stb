@@ -13,6 +13,6 @@
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
-  "include": ["bin/**/*"],
-  "exclude": ["node_modules", "dist", "serverless"]
+  "include": ["bin/**/*.ts"],
+  "exclude": ["node_modules", "dist", "serverless", "bin/**/*.test.ts", "bin/**/*.spec.ts"]
 }

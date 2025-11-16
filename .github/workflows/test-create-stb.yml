@@ -1,0 +1,53 @@
+name: Test create-stb
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test-create-stb:
+    name: Test create-stb CLI and Serverless Boilerplate (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ["20.x", "24.x"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - run: npm install
+
+      - name: Run CLI Unit tests
+        run: npm test
+
+      - name: Build CLI
+        run: npm run build
+
+      - name: Link CLI globally
+        run: npm link
+
+      - name: Create and verify new-app
+        run: |
+          npx create-stb new-app || exit 1
+          test -d new-app || { echo "new-app missing"; exit 1; }
+          test -f new-app/package.json || { echo "package.json missing"; exit 1; }
+          test -f new-app/serverless.yml || { echo "serverless.yml missing"; exit 1; }
+          grep -q "service: new-app" new-app/serverless.yml || { echo "Service name not updated"; exit 1; }
+
+      - name: Validate NPM scripts in new-app
+        run: |
+          for script in offline build deploy; do
+            if ! grep -q "\"$script\"" "new-app/package.json"; then
+              echo "NPM script '$script' missing in new-app"
+              exit 1
+            fi
+          done
+
+      - name: Cleanup new-app
+        run: rm -rf new-app
