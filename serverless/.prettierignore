@@ -1,0 +1,20 @@
+# Ignore build output
+.build
+dist
+coverage
+
+# Node
+node_modules
+
+# Dependency lockfiles (if you don't want Prettier to format them)
+package-lock.json
+yarn.lock
+
+# Serverless, system, IDE, or OS files
+.serverless
+.DS_Store
+.env
+*.log
+
+# Lambdas' bundles (if any)
+bundle-*.js

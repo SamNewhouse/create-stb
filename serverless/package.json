@@ -1,0 +1,39 @@
+{
+  "name": "create-ntb",
+  "version": "1.0.0",
+  "description": "create-ntb boilerplate template",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/SamNewhouse/serverless-typescript-boilerplate.git"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf .build",
+    "deploy": "serverless deploy",
+    "dynamo:destroy": "docker compose down -v",
+    "dynamo:down": "docker compose down",
+    "dynamo:up": "docker compose up -d",
+    "format": "prettier --write .",
+    "offline": "serverless offline --stage dev",
+    "tables:create": "ts-node src/scripts/create-tables.ts",
+    "tables:seed": "ts-node src/scripts/seed-tables.ts"
+  },
+  "author": "Sam Newhouse",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.910.0",
+    "@aws-sdk/util-dynamodb": "3.910.0",
+    "@faker-js/faker": "10.1.0",
+    "axios": "1.12.2",
+    "dotenv": "17.2.3"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "8.10.155",
+    "@types/dotenv": "6.1.1",
+    "@types/node": "24.7.2",
+    "prettier": "3.6.2",
+    "serverless": "4.20.2",
+    "serverless-offline": "14.4.0",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "assignees": ["SamNewhouse"],
+  "addLabels": ["dependency"],
+  "rebaseWhen": "behind-base-branch",
+  "packageRules": [
+    {
+      "matchFileNames": ["package.json"],
+      "commitMessagePrefix": "[DEPENDENCY]",
+      "matchPackageNames": ["*"],
+      "automerge": false,
+      "separateMultipleMajor": true
+    }
+  ]
+}

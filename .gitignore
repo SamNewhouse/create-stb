@@ -1,0 +1,34 @@
+# Node
+node_modules/
+
+# Build output
+.build/
+dist/
+
+# Serverless deployment artifacts
+.serverless/
+
+# Local env and credentials
+.env
+.env.local
+.aws/
+
+# Miscellaneous system files
+.DS_Store
+*.log
+
+# Optional: Logs, lockfiles, IDE/project settings
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+*.swp
+*.swo
+
+# VSCode and JetBrains
+.vscode/
+.idea/
+*.iml
+
+# If using test snapshots, add:
+__snapshots__/

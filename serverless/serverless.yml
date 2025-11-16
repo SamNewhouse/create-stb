@@ -1,0 +1,52 @@
+service: serverless-typescript-boilerplate
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: eu-west-2
+  stage: ${opt:stage, 'dev'}
+  environment:
+    DYNAMODB_EXAMPLE: Example
+    JWT_SECRET: ${env:JWT_SECRET, 'dev-secret-change-in-production'}
+    DYNAMODB_ENDPOINT: ${env:DYNAMODB_ENDPOINT, ''}
+    STAGE: ${self:provider.stage}
+
+package:
+  individually: true
+  patterns:
+    - "!src/scripts/**"
+
+plugins:
+  - serverless-offline
+
+custom:
+  dynamodb:
+    stages:
+      - dev
+    start:
+      port: 8000
+      inMemory: true
+      migrate: true
+
+functions:
+  example-get:
+    handler: src/handlers/example/get.handler
+    events:
+      - http:
+          path: example/{id}
+          method: get
+          cors: true
+
+resources:
+  Resources:
+    ExampleTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Example
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST

@@ -1,0 +1,57 @@
+{
+  "name": "create-stb",
+  "version": "1.0.0",
+  "description": "A CLI to quickly scaffold a Serverless TypeScript Boilerplate project.",
+  "license": "ISC",
+  "readme": "README.md",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "bin": {
+    "create-stb": "./dist/create-stb.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "package.json",
+    "serverless"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@types/node": "20.19.25",
+    "prettier": "3.6.2",
+    "typescript": "5.9.3"
+  },
+  "homepage": "https://github.com/SamNewhouse/create-stb",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SamNewhouse/create-stb.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SamNewhouse/create-stb/issues"
+  },
+  "author": {
+    "name": "Sam Newhouse",
+    "url": "https://github.com/SamNewhouse"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/SamNewhouse"
+  },
+  "keywords": [
+    "create-stb",
+    "serverless",
+    "typescript",
+    "boilerplate",
+    "starter",
+    "scaffold",
+    "cli",
+    "template",
+    "starter-kit"
+  ]
+}
