@@ -1,4 +1,4 @@
-# create-stb
+# Serverless Typescript Boilerplate by Sam Newhouse
 
 **A CLI to instantly scaffold a production-ready Serverless TypeScript Boilerplate.**
 
