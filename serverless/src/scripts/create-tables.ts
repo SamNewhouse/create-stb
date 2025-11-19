@@ -16,7 +16,6 @@ const tables = [
 async function createTables(): Promise<void> {
   console.log("🏗️  Creating DynamoDB tables (Docker/local)...\n");
 
-  // Use the client provided by your library (env config, singleton, etc.)
   const client = getClient();
 
   try {

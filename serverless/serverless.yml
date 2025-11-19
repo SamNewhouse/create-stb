@@ -6,8 +6,6 @@ provider:
   region: eu-west-2
   stage: ${opt:stage, 'dev'}
   environment:
-    DYNAMODB_EXAMPLE: Example
-    JWT_SECRET: ${env:JWT_SECRET, 'dev-secret-change-in-production'}
     DYNAMODB_ENDPOINT: ${env:DYNAMODB_ENDPOINT, ''}
     STAGE: ${self:provider.stage}
 

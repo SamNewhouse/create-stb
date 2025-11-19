@@ -25,7 +25,7 @@ const defaultHeaders = {
  * Default Axios instance with common configuration
  */
 const httpClient = axios.create({
-  timeout: 30000, // 30 second timeout
+  timeout: 30000,
   headers: {
     "Content-Type": "application/json",
   },
