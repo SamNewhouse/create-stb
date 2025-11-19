@@ -1,6 +1,6 @@
 {
   "name": "create-stb",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "A CLI to quickly scaffold a Serverless TypeScript Boilerplate project.",
   "license": "ISC",
   "readme": "README.md",
@@ -57,5 +57,53 @@
     "cli",
     "template",
     "starter-kit"
-  ]
+  ],
+  "peerDependencies": {
+    "@aws-sdk/client-dynamodb": "3.934.0",
+    "@aws-sdk/util-dynamodb": "3.934.0",
+    "axios": "1.13.2",
+    "dotenv": "17.2.3",
+    "@types/aws-lambda": "8.10.159",
+    "@types/dotenv": "8.2.3",
+    "@types/node": "24.7.2",
+    "prettier": "3.6.2",
+    "serverless": "4.23.0",
+    "serverless-offline": "14.4.0",
+    "typescript": "5.9.3"
+  },
+  "peerDependenciesMeta": {
+    "@aws-sdk/client-dynamodb": {
+      "optional": true
+    },
+    "@aws-sdk/util-dynamodb": {
+      "optional": true
+    },
+    "axios": {
+      "optional": true
+    },
+    "dotenv": {
+      "optional": true
+    },
+    "@types/aws-lambda": {
+      "optional": true
+    },
+    "@types/dotenv": {
+      "optional": true
+    },
+    "@types/node": {
+      "optional": true
+    },
+    "prettier": {
+      "optional": true
+    },
+    "serverless": {
+      "optional": true
+    },
+    "serverless-offline": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    }
+  }
 }
