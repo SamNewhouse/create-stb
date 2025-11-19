@@ -1,26 +1,31 @@
 import {
   checkNodeVersion,
+  checkGitInstalled,
+  sanitizePath,
+  cloneBoilerplate,
   createProjectDirectory,
   copyDir,
+  cleanupTemp,
   updatePackageJson,
   updateServerlessYml,
 } from "./create-stb";
 import fs from "fs";
 import path from "path";
+import os from "os";
+import { execFileSync } from "child_process";
 
-// Temporary test folder structure
+jest.mock("child_process");
+
 const testRoot = path.join(__dirname, "..", "test-tmp");
 const templateDir = path.join(testRoot, "template");
 const targetDir = path.join(testRoot, "target");
 
 beforeAll(() => {
-  // Clean up old test dirs
   if (fs.existsSync(testRoot)) fs.rmSync(testRoot, { recursive: true });
   fs.mkdirSync(testRoot);
 });
 
 afterAll(() => {
-  // Remove test dirs after all tests
   if (fs.existsSync(testRoot)) fs.rmSync(testRoot, { recursive: true });
 });
 
@@ -32,6 +37,151 @@ describe("CLI Utility Functions", () => {
 
     it("should throw when node version is too low", () => {
       expect(() => checkNodeVersion(99)).toThrow(/required/);
+    });
+  });
+
+  describe("checkGitInstalled", () => {
+    const mockExecFileSync = execFileSync as jest.MockedFunction<typeof execFileSync>;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("should not throw when git is installed", () => {
+      mockExecFileSync.mockReturnValue(Buffer.from("git version 2.39.0"));
+      expect(() => checkGitInstalled()).not.toThrow();
+      expect(mockExecFileSync).toHaveBeenCalledWith("git", ["--version"], { stdio: "ignore" });
+    });
+
+    it("should throw when git command fails", () => {
+      mockExecFileSync.mockImplementation(() => {
+        throw new Error("command not found");
+      });
+
+      expect(() => checkGitInstalled()).toThrow(/Git is not installed/);
+    });
+  });
+
+  describe("sanitizePath", () => {
+    it("should return normalized absolute path for valid input", () => {
+      const testPath = "my-project";
+      const result = sanitizePath(testPath);
+      expect(path.isAbsolute(result)).toBe(true);
+      expect(result).toContain("my-project");
+    });
+
+    it("should throw for empty string", () => {
+      expect(() => sanitizePath("")).toThrow(/non-empty string/);
+    });
+
+    it("should throw for whitespace-only string", () => {
+      expect(() => sanitizePath("   ")).toThrow(/non-empty string/);
+    });
+
+    it("should throw for non-string input", () => {
+      expect(() => sanitizePath(null as any)).toThrow(/non-empty string/);
+      expect(() => sanitizePath(undefined as any)).toThrow(/non-empty string/);
+      expect(() => sanitizePath(123 as any)).toThrow(/non-empty string/);
+    });
+
+    it("should throw for paths starting with dash", () => {
+      expect(() => sanitizePath("-my-path")).toThrow(/must not start with/);
+      expect(() => sanitizePath("--upload-pack")).toThrow(/must not start with/);
+    });
+
+    it("should throw for paths with backticks", () => {
+      expect(() => sanitizePath("path`whoami`")).toThrow(/dangerous characters/);
+    });
+
+    it("should throw for paths with command substitution", () => {
+      expect(() => sanitizePath("path$(whoami)")).toThrow(/dangerous characters/);
+    });
+
+    it("should throw for paths with shell operators", () => {
+      expect(() => sanitizePath("path|whoami")).toThrow(/dangerous characters/);
+      expect(() => sanitizePath("path;whoami")).toThrow(/dangerous characters/);
+      expect(() => sanitizePath("path&whoami")).toThrow(/dangerous characters/);
+    });
+
+    it("should throw for paths with redirects", () => {
+      expect(() => sanitizePath("path>file")).toThrow(/dangerous characters/);
+      expect(() => sanitizePath("path<file")).toThrow(/dangerous characters/);
+    });
+
+    it("should throw for paths with null bytes", () => {
+      expect(() => sanitizePath("path\0")).toThrow(/dangerous characters/);
+    });
+
+    it("should handle paths with valid special characters", () => {
+      const validPaths = [
+        "my-project",
+        "my_project",
+        "my.project",
+        "my project",
+        "project123",
+        "Project-Name_v1.0",
+      ];
+
+      validPaths.forEach((testPath) => {
+        expect(() => sanitizePath(testPath)).not.toThrow();
+      });
+    });
+
+    it("should trim whitespace from input", () => {
+      const result = sanitizePath("  my-project  ");
+      expect(result).toContain("my-project");
+      expect(result).not.toMatch(/^\s+|\s+$/);
+    });
+
+    it("should normalize path separators", () => {
+      const result = sanitizePath("my-project/./subdir/../");
+      expect(result).not.toContain("./");
+      expect(result).not.toContain("../");
+    });
+  });
+
+  describe("cloneBoilerplate", () => {
+    const mockExecFileSync = execFileSync as jest.MockedFunction<typeof execFileSync>;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockExecFileSync.mockRestore();
+    });
+
+    it("should clone the serverless folder from the repo", () => {
+      jest.unmock("child_process");
+      const { execFileSync: realExecFileSync } = jest.requireActual("child_process");
+      mockExecFileSync.mockImplementation(realExecFileSync);
+
+      const tempDir = path.join(os.tmpdir(), `test-clone-${Date.now()}`);
+      fs.mkdirSync(tempDir, { recursive: true });
+
+      try {
+        const boilerplatePath = cloneBoilerplate(tempDir);
+        expect(fs.existsSync(boilerplatePath)).toBe(true);
+        expect(fs.existsSync(path.join(boilerplatePath, "package.json"))).toBe(true);
+        expect(fs.existsSync(path.join(boilerplatePath, "serverless.yml"))).toBe(true);
+      } finally {
+        if (fs.existsSync(tempDir)) {
+          fs.rmSync(tempDir, { recursive: true, force: true });
+        }
+      }
+    }, 30000);
+  });
+
+  describe("cleanupTemp", () => {
+    it("should remove temporary directory", () => {
+      const tempDir = path.join(testRoot, "temp-cleanup-test");
+      fs.mkdirSync(tempDir, { recursive: true });
+      fs.writeFileSync(path.join(tempDir, "test.txt"), "test");
+
+      cleanupTemp(tempDir);
+      expect(fs.existsSync(tempDir)).toBe(false);
+    });
+
+    it("should not throw if directory does not exist", () => {
+      const nonExistent = path.join(testRoot, "does-not-exist");
+      expect(() => cleanupTemp(nonExistent)).not.toThrow();
     });
   });
 
@@ -62,20 +212,24 @@ describe("CLI Utility Functions", () => {
 
   describe("copyDir", () => {
     beforeAll(() => {
-      // Create template with files and subdirs + dotfile
-      fs.mkdirSync(templateDir);
+      if (!fs.existsSync(templateDir)) fs.mkdirSync(templateDir, { recursive: true });
       fs.writeFileSync(path.join(templateDir, "file.txt"), "hello world");
       fs.writeFileSync(path.join(templateDir, ".dotfile"), "dotfile");
-      fs.mkdirSync(path.join(templateDir, "sub"));
+      const subDir = path.join(templateDir, "sub");
+      if (!fs.existsSync(subDir)) fs.mkdirSync(subDir);
       fs.writeFileSync(path.join(templateDir, "sub", "nested.txt"), "nested");
     });
 
+    afterAll(() => {
+      if (fs.existsSync(templateDir)) fs.rmSync(templateDir, { recursive: true });
+    });
+
     it("should copy files, subdirectories, and dotfiles", () => {
+      if (fs.existsSync(targetDir)) fs.rmSync(targetDir, { recursive: true });
       copyDir(templateDir, targetDir);
       expect(fs.existsSync(path.join(targetDir, "file.txt"))).toBe(true);
       expect(fs.existsSync(path.join(targetDir, ".dotfile"))).toBe(true);
       expect(fs.existsSync(path.join(targetDir, "sub", "nested.txt"))).toBe(true);
-      // Cleanup
       fs.rmSync(targetDir, { recursive: true });
     });
   });
@@ -84,8 +238,11 @@ describe("CLI Utility Functions", () => {
     const pkgPath = path.join(testRoot, "package.json");
 
     beforeEach(() => {
-      // Fresh dummy package.json for each test
       fs.writeFileSync(pkgPath, JSON.stringify({ name: "old", description: "desc" }, null, 2));
+    });
+
+    afterEach(() => {
+      if (fs.existsSync(pkgPath)) fs.rmSync(pkgPath);
     });
 
     it("should update name and description", () => {
@@ -107,6 +264,10 @@ describe("CLI Utility Functions", () => {
 
     beforeEach(() => {
       fs.writeFileSync(ymlPath, sampleYML, "utf8");
+    });
+
+    afterEach(() => {
+      if (fs.existsSync(ymlPath)) fs.rmSync(ymlPath);
     });
 
     it("should update service name in serverless.yml", () => {
