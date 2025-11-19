@@ -31,9 +31,7 @@
     "serverless-offline": "14.4.0",
     "typescript": "5.9.3"
   },
-  "author": "Sam Newhouse",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/SamNewhouse/create-stb.git"
-  }
+  "keywords": [
+    "create-stb"
+  ]
 }

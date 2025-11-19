@@ -2,6 +2,7 @@
 import path from "path";
 import fs from "fs";
 import { execSync } from "child_process";
+import os from "os";
 
 // Progress display helpers
 function writeLine(msg: string): void {
@@ -25,6 +26,32 @@ export function checkNodeVersion(minMajor: number = 20): void {
   if (Number(major) < minMajor) throw new Error(`Node.js v${minMajor}+ required`);
 }
 
+// Check if git is installed
+export function checkGitInstalled(): void {
+  try {
+    execSync("git --version", { stdio: "ignore" });
+  } catch {
+    throw new Error("Git is not installed. Please install git and try again.");
+  }
+}
+
+// Clone the repo to a temp directory and extract the serverless folder
+export function cloneBoilerplate(tempDir: string): string {
+  const repoUrl = "https://github.com/SamNewhouse/create-stb.git";
+  const clonePath = path.join(tempDir, "create-stb-temp");
+
+  execSync(`git clone --depth 1 --filter=blob:none --sparse ${repoUrl} ${clonePath}`, {
+    stdio: "ignore",
+  });
+
+  execSync("git sparse-checkout set serverless", {
+    cwd: clonePath,
+    stdio: "ignore",
+  });
+
+  return path.join(clonePath, "serverless");
+}
+
 // Create an empty directory (or error if not empty)
 export function createProjectDirectory(projectPath: string): void {
   if (fs.existsSync(projectPath)) {
@@ -45,6 +72,13 @@ export function copyDir(src: string, dest: string): void {
     } else {
       fs.copyFileSync(srcPath, destPath);
     }
+  }
+}
+
+// Clean up temporary directory
+export function cleanupTemp(tempDir: string): void {
+  if (fs.existsSync(tempDir)) {
+    fs.rmSync(tempDir, { recursive: true, force: true });
   }
 }
 
@@ -74,41 +108,62 @@ export async function main(): Promise<void> {
     process.exit(1);
   }
   const projectPath = path.resolve(process.cwd(), name);
-  const boilerplateSrc = path.resolve(__dirname, "..", "serverless");
+  const tempDir = path.join(os.tmpdir(), `create-stb-${Date.now()}`);
 
-  step("Checking Node version");
-  checkNodeVersion();
-  doneStep();
+  try {
+    step("Checking Node version");
+    checkNodeVersion();
+    doneStep();
 
-  step("Creating project directory");
-  createProjectDirectory(projectPath);
-  doneStep();
+    step("Checking Git installation");
+    checkGitInstalled();
+    doneStep();
 
-  step("Copying boilerplate files");
-  copyDir(boilerplateSrc, projectPath);
-  doneStep();
+    step("Creating project directory");
+    createProjectDirectory(projectPath);
+    doneStep();
 
-  step("Updating package.json");
-  updatePackageJson(projectPath, name);
-  doneStep();
+    step("Downloading boilerplate template");
+    const boilerplateSrc = cloneBoilerplate(tempDir);
+    doneStep();
 
-  step("Updating serverless.yml");
-  updateServerlessYml(projectPath, name);
-  doneStep();
+    step("Copying boilerplate files");
+    copyDir(boilerplateSrc, projectPath);
+    doneStep();
 
-  step("Installing packages");
-  execSync("npm install --silent", { cwd: projectPath, stdio: "inherit" });
-  doneStep();
+    step("Cleaning up temporary files");
+    cleanupTemp(tempDir);
+    doneStep();
 
-  clearLine();
-  console.log(`\nInstallation complete\n\nNext steps:\n\n  cd ${name}\n  npm run offline\n`);
+    step("Updating package.json");
+    updatePackageJson(projectPath, name);
+    doneStep();
+
+    step("Updating serverless.yml");
+    updateServerlessYml(projectPath, name);
+    doneStep();
+
+    step("Installing packages");
+    execSync("npm install --silent", { cwd: projectPath, stdio: "inherit" });
+    doneStep();
+
+    clearLine();
+    console.log(`\nInstallation complete\n\nNext steps:\n\n  cd ${name}\n  npm run offline\n`);
+  } catch (error) {
+    cleanupTemp(tempDir);
+    throw error;
+  }
 }
 
 export default {
   checkNodeVersion,
+  checkGitInstalled,
+  cloneBoilerplate,
   createProjectDirectory,
   copyDir,
+  cleanupTemp,
   updatePackageJson,
+  updateServerlessYml,
   main,
 };
 

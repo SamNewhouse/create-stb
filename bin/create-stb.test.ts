@@ -1,12 +1,17 @@
 import {
   checkNodeVersion,
+  checkGitInstalled,
+  cloneBoilerplate,
   createProjectDirectory,
   copyDir,
+  cleanupTemp,
   updatePackageJson,
   updateServerlessYml,
 } from "./create-stb";
 import fs from "fs";
 import path from "path";
+import os from "os";
+import { execSync } from "child_process";
 
 // Temporary test folder structure
 const testRoot = path.join(__dirname, "..", "test-tmp");
@@ -32,6 +37,65 @@ describe("CLI Utility Functions", () => {
 
     it("should throw when node version is too low", () => {
       expect(() => checkNodeVersion(99)).toThrow(/required/);
+    });
+  });
+
+  describe("checkGitInstalled", () => {
+    it("should not throw when git is installed", () => {
+      // This test assumes git is installed in CI/dev environment
+      expect(() => checkGitInstalled()).not.toThrow();
+    });
+
+    it("should throw when git command fails", () => {
+      // Mock execSync to simulate git not being installed
+      const originalExecSync = execSync;
+      (global as any).execSync = jest.fn(() => {
+        throw new Error("command not found");
+      });
+
+      expect(() => checkGitInstalled()).toThrow(/Git is not installed/);
+
+      // Restore original
+      (global as any).execSync = originalExecSync;
+    });
+  });
+
+  describe("cloneBoilerplate", () => {
+    it("should clone the serverless folder from the repo", () => {
+      const tempDir = path.join(os.tmpdir(), `test-clone-${Date.now()}`);
+      fs.mkdirSync(tempDir, { recursive: true });
+
+      try {
+        const boilerplatePath = cloneBoilerplate(tempDir);
+
+        // Check that the serverless folder exists
+        expect(fs.existsSync(boilerplatePath)).toBe(true);
+
+        // Check that key files exist in the serverless folder
+        expect(fs.existsSync(path.join(boilerplatePath, "package.json"))).toBe(true);
+        expect(fs.existsSync(path.join(boilerplatePath, "serverless.yml"))).toBe(true);
+      } finally {
+        // Cleanup
+        if (fs.existsSync(tempDir)) {
+          fs.rmSync(tempDir, { recursive: true, force: true });
+        }
+      }
+    }, 30000); // 30 second timeout for network operation
+  });
+
+  describe("cleanupTemp", () => {
+    it("should remove temporary directory", () => {
+      const tempDir = path.join(testRoot, "temp-cleanup-test");
+      fs.mkdirSync(tempDir, { recursive: true });
+      fs.writeFileSync(path.join(tempDir, "test.txt"), "test");
+
+      cleanupTemp(tempDir);
+      expect(fs.existsSync(tempDir)).toBe(false);
+    });
+
+    it("should not throw if directory does not exist", () => {
+      const nonExistent = path.join(testRoot, "does-not-exist");
+      expect(() => cleanupTemp(nonExistent)).not.toThrow();
     });
   });
 
@@ -63,14 +127,20 @@ describe("CLI Utility Functions", () => {
   describe("copyDir", () => {
     beforeAll(() => {
       // Create template with files and subdirs + dotfile
-      fs.mkdirSync(templateDir);
+      if (!fs.existsSync(templateDir)) fs.mkdirSync(templateDir, { recursive: true });
       fs.writeFileSync(path.join(templateDir, "file.txt"), "hello world");
       fs.writeFileSync(path.join(templateDir, ".dotfile"), "dotfile");
-      fs.mkdirSync(path.join(templateDir, "sub"));
+      const subDir = path.join(templateDir, "sub");
+      if (!fs.existsSync(subDir)) fs.mkdirSync(subDir);
       fs.writeFileSync(path.join(templateDir, "sub", "nested.txt"), "nested");
     });
 
+    afterAll(() => {
+      if (fs.existsSync(templateDir)) fs.rmSync(templateDir, { recursive: true });
+    });
+
     it("should copy files, subdirectories, and dotfiles", () => {
+      if (fs.existsSync(targetDir)) fs.rmSync(targetDir, { recursive: true });
       copyDir(templateDir, targetDir);
       expect(fs.existsSync(path.join(targetDir, "file.txt"))).toBe(true);
       expect(fs.existsSync(path.join(targetDir, ".dotfile"))).toBe(true);
@@ -86,6 +156,10 @@ describe("CLI Utility Functions", () => {
     beforeEach(() => {
       // Fresh dummy package.json for each test
       fs.writeFileSync(pkgPath, JSON.stringify({ name: "old", description: "desc" }, null, 2));
+    });
+
+    afterEach(() => {
+      if (fs.existsSync(pkgPath)) fs.rmSync(pkgPath);
     });
 
     it("should update name and description", () => {
@@ -107,6 +181,10 @@ describe("CLI Utility Functions", () => {
 
     beforeEach(() => {
       fs.writeFileSync(ymlPath, sampleYML, "utf8");
+    });
+
+    afterEach(() => {
+      if (fs.existsSync(ymlPath)) fs.rmSync(ymlPath);
     });
 
     it("should update service name in serverless.yml", () => {
