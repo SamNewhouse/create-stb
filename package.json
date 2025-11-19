@@ -9,7 +9,7 @@
     "npm": ">=10.0.0"
   },
   "bin": {
-    "create-stb": "./dist/create-stb.js"
+    "create-stb": "dist/create-stb.js"
   },
   "files": [
     "dist/create-stb.js",
@@ -34,7 +34,7 @@
   "homepage": "https://github.com/SamNewhouse/create-stb",
   "repository": {
     "type": "git",
-    "url": "https://github.com/SamNewhouse/create-stb.git"
+    "url": "git+https://github.com/SamNewhouse/create-stb.git"
   },
   "bugs": {
     "url": "https://github.com/SamNewhouse/create-stb/issues"
