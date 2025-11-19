@@ -13,19 +13,18 @@ import path from "path";
 import os from "os";
 import { execSync } from "child_process";
 
-// Temporary test folder structure
+jest.mock("child_process");
+
 const testRoot = path.join(__dirname, "..", "test-tmp");
 const templateDir = path.join(testRoot, "template");
 const targetDir = path.join(testRoot, "target");
 
 beforeAll(() => {
-  // Clean up old test dirs
   if (fs.existsSync(testRoot)) fs.rmSync(testRoot, { recursive: true });
   fs.mkdirSync(testRoot);
 });
 
 afterAll(() => {
-  // Remove test dirs after all tests
   if (fs.existsSync(testRoot)) fs.rmSync(testRoot, { recursive: true });
 });
 
@@ -41,46 +40,54 @@ describe("CLI Utility Functions", () => {
   });
 
   describe("checkGitInstalled", () => {
+    const mockExecSync = execSync as jest.MockedFunction<typeof execSync>;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
     it("should not throw when git is installed", () => {
-      // This test assumes git is installed in CI/dev environment
+      mockExecSync.mockReturnValue(Buffer.from("git version 2.39.0"));
       expect(() => checkGitInstalled()).not.toThrow();
+      expect(mockExecSync).toHaveBeenCalledWith("git --version", { stdio: "ignore" });
     });
 
     it("should throw when git command fails", () => {
-      // Mock execSync to simulate git not being installed
-      const originalExecSync = execSync;
-      (global as any).execSync = jest.fn(() => {
+      mockExecSync.mockImplementation(() => {
         throw new Error("command not found");
       });
 
       expect(() => checkGitInstalled()).toThrow(/Git is not installed/);
-
-      // Restore original
-      (global as any).execSync = originalExecSync;
     });
   });
 
   describe("cloneBoilerplate", () => {
+    const mockExecSync = execSync as jest.MockedFunction<typeof execSync>;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockExecSync.mockRestore();
+    });
+
     it("should clone the serverless folder from the repo", () => {
+      jest.unmock("child_process");
+      const { execSync: realExecSync } = jest.requireActual("child_process");
+      mockExecSync.mockImplementation(realExecSync);
+
       const tempDir = path.join(os.tmpdir(), `test-clone-${Date.now()}`);
       fs.mkdirSync(tempDir, { recursive: true });
 
       try {
         const boilerplatePath = cloneBoilerplate(tempDir);
-
-        // Check that the serverless folder exists
         expect(fs.existsSync(boilerplatePath)).toBe(true);
-
-        // Check that key files exist in the serverless folder
         expect(fs.existsSync(path.join(boilerplatePath, "package.json"))).toBe(true);
         expect(fs.existsSync(path.join(boilerplatePath, "serverless.yml"))).toBe(true);
       } finally {
-        // Cleanup
         if (fs.existsSync(tempDir)) {
           fs.rmSync(tempDir, { recursive: true, force: true });
         }
       }
-    }, 30000); // 30 second timeout for network operation
+    }, 30000);
   });
 
   describe("cleanupTemp", () => {
@@ -126,7 +133,6 @@ describe("CLI Utility Functions", () => {
 
   describe("copyDir", () => {
     beforeAll(() => {
-      // Create template with files and subdirs + dotfile
       if (!fs.existsSync(templateDir)) fs.mkdirSync(templateDir, { recursive: true });
       fs.writeFileSync(path.join(templateDir, "file.txt"), "hello world");
       fs.writeFileSync(path.join(templateDir, ".dotfile"), "dotfile");
@@ -145,7 +151,6 @@ describe("CLI Utility Functions", () => {
       expect(fs.existsSync(path.join(targetDir, "file.txt"))).toBe(true);
       expect(fs.existsSync(path.join(targetDir, ".dotfile"))).toBe(true);
       expect(fs.existsSync(path.join(targetDir, "sub", "nested.txt"))).toBe(true);
-      // Cleanup
       fs.rmSync(targetDir, { recursive: true });
     });
   });
@@ -154,7 +159,6 @@ describe("CLI Utility Functions", () => {
     const pkgPath = path.join(testRoot, "package.json");
 
     beforeEach(() => {
-      // Fresh dummy package.json for each test
       fs.writeFileSync(pkgPath, JSON.stringify({ name: "old", description: "desc" }, null, 2));
     });
 

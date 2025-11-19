@@ -23,11 +23,11 @@
     "dotenv": "17.2.3"
   },
   "devDependencies": {
-    "@types/aws-lambda": "8.10.158",
+    "@types/aws-lambda": "8.10.159",
     "@types/dotenv": "6.1.1",
     "@types/node": "24.7.2",
     "prettier": "3.6.2",
-    "serverless": "4.20.2",
+    "serverless": "4.23.0",
     "serverless-offline": "14.4.0",
     "typescript": "5.9.3"
   },
