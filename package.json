@@ -105,5 +105,8 @@
     "typescript": {
       "optional": true
     }
+  },
+  "overrides": {
+    "glob": "10.5.0"
   }
 }
