@@ -40,14 +40,8 @@ export function cloneBoilerplate(tempDir: string): string {
   const repoUrl = "https://github.com/SamNewhouse/create-stb.git";
   const clonePath = path.join(tempDir, "create-stb-temp");
 
-  // Validate clonePath to prevent injection/flag confusion
-  if (
-    !path.isAbsolute(clonePath) ||
-    path.basename(clonePath).startsWith("-")
-  ) {
-    throw new Error(
-      `Unsafe clone path detected: ${clonePath}`
-    );
+  if (!path.isAbsolute(clonePath) || path.basename(clonePath).startsWith("-")) {
+    throw new Error(`Unsafe clone path detected: ${clonePath}`);
   }
 
   execFileSync(
