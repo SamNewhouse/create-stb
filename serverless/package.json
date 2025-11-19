@@ -16,14 +16,14 @@
     "tables:seed": "ts-node src/scripts/seed-tables.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "3.932.0",
-    "@aws-sdk/util-dynamodb": "3.932.0",
+    "@aws-sdk/client-dynamodb": "3.934.0",
+    "@aws-sdk/util-dynamodb": "3.934.0",
     "axios": "1.13.2",
     "dotenv": "17.2.3"
   },
   "devDependencies": {
     "@types/aws-lambda": "8.10.159",
-    "@types/dotenv": "6.1.1",
+    "@types/dotenv": "8.2.3",
     "@types/node": "24.7.2",
     "prettier": "3.6.2",
     "serverless": "4.23.0",
