@@ -11,7 +11,7 @@ import {
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 
 jest.mock("child_process");
 
@@ -40,20 +40,20 @@ describe("CLI Utility Functions", () => {
   });
 
   describe("checkGitInstalled", () => {
-    const mockExecSync = execSync as jest.MockedFunction<typeof execSync>;
+    const mockExecFileSync = execFileSync as jest.MockedFunction<typeof execFileSync>;
 
     beforeEach(() => {
       jest.clearAllMocks();
     });
 
     it("should not throw when git is installed", () => {
-      mockExecSync.mockReturnValue(Buffer.from("git version 2.39.0"));
+      mockExecFileSync.mockReturnValue(Buffer.from("git version 2.39.0"));
       expect(() => checkGitInstalled()).not.toThrow();
-      expect(mockExecSync).toHaveBeenCalledWith("git --version", { stdio: "ignore" });
+      expect(mockExecFileSync).toHaveBeenCalledWith("git", ["--version"], { stdio: "ignore" });
     });
 
     it("should throw when git command fails", () => {
-      mockExecSync.mockImplementation(() => {
+      mockExecFileSync.mockImplementation(() => {
         throw new Error("command not found");
       });
 
@@ -62,17 +62,17 @@ describe("CLI Utility Functions", () => {
   });
 
   describe("cloneBoilerplate", () => {
-    const mockExecSync = execSync as jest.MockedFunction<typeof execSync>;
+    const mockExecFileSync = execFileSync as jest.MockedFunction<typeof execFileSync>;
 
     beforeEach(() => {
       jest.clearAllMocks();
-      mockExecSync.mockRestore();
+      mockExecFileSync.mockRestore();
     });
 
     it("should clone the serverless folder from the repo", () => {
       jest.unmock("child_process");
-      const { execSync: realExecSync } = jest.requireActual("child_process");
-      mockExecSync.mockImplementation(realExecSync);
+      const { execFileSync: realExecFileSync } = jest.requireActual("child_process");
+      mockExecFileSync.mockImplementation(realExecFileSync);
 
       const tempDir = path.join(os.tmpdir(), `test-clone-${Date.now()}`);
       fs.mkdirSync(tempDir, { recursive: true });

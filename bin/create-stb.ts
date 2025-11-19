@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import path from "path";
 import fs from "fs";
-import { execSync } from "child_process";
+import { execSync, execFileSync } from "child_process";
 import os from "os";
 
 // Progress display helpers
@@ -29,7 +29,7 @@ export function checkNodeVersion(minMajor: number = 20): void {
 // Check if git is installed
 export function checkGitInstalled(): void {
   try {
-    execSync("git --version", { stdio: "ignore" });
+    execFileSync("git", ["--version"], { stdio: "ignore" });
   } catch {
     throw new Error("Git is not installed. Please install git and try again.");
   }
@@ -40,11 +40,13 @@ export function cloneBoilerplate(tempDir: string): string {
   const repoUrl = "https://github.com/SamNewhouse/create-stb.git";
   const clonePath = path.join(tempDir, "create-stb-temp");
 
-  execSync(`git clone --depth 1 --filter=blob:none --sparse ${repoUrl} ${clonePath}`, {
-    stdio: "ignore",
-  });
+  execFileSync(
+    "git",
+    ["clone", "--depth", "1", "--filter=blob:none", "--sparse", repoUrl, clonePath],
+    { stdio: "ignore" },
+  );
 
-  execSync("git sparse-checkout set serverless", {
+  execFileSync("git", ["sparse-checkout", "set", "serverless"], {
     cwd: clonePath,
     stdio: "ignore",
   });
