@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf .build",
+    "clean": "rm -rf .build .serverless",
     "deploy": "serverless deploy",
     "dynamo:destroy": "docker compose down -v",
     "dynamo:down": "docker compose down",
