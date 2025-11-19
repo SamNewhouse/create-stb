@@ -98,7 +98,6 @@ npm run deploy -- --stage production
 ## Serverless Plugins
 
 - **[serverless-offline](https://github.com/dherault/serverless-offline)** - Emulate AWS Lambda and API Gateway locally
-- **[serverless-dynamodb](https://github.com/raisenational/serverless-dynamodb)** - Run DynamoDB locally
 
 ## Local DynamoDB
 
