@@ -36,7 +36,12 @@ export function sanitizePath(inputPath: string): string {
 
   const trimmed = inputPath.trim();
 
-  if (trimmed.startsWith("-") || /[`$|;&<>\0]/.test(trimmed)) {
+  // Block input that starts with '-' or '--'
+  if (trimmed.startsWith('-') || trimmed.startsWith('--')) {
+    throw new Error("Invalid path: must not start with '-' or '--'");
+  }
+  // Block dangerous shell metacharacters
+  if (/[`$|;&<>\0]/.test(trimmed)) {
     throw new Error("Invalid path: contains dangerous characters");
   }
 
