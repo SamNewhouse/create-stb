@@ -1,6 +1,6 @@
 {
   "name": "create-stb",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "A CLI to quickly scaffold a Serverless TypeScript Boilerplate project.",
   "license": "ISC",
   "readme": "README.md",
