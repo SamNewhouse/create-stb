@@ -1,4 +1,4 @@
-# create-ntb
+# create-stb
 
 ## Serverless TypeScript Boilerplate by Sam Newhouse
 
