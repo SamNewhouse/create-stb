@@ -85,8 +85,8 @@ describe("CLI Utility Functions", () => {
     });
 
     it("should throw for paths starting with dash", () => {
-      expect(() => sanitizePath("-my-path")).toThrow(/dangerous characters/);
-      expect(() => sanitizePath("--upload-pack")).toThrow(/dangerous characters/);
+      expect(() => sanitizePath("-my-path")).toThrow(/must not start with/);
+      expect(() => sanitizePath("--upload-pack")).toThrow(/must not start with/);
     });
 
     it("should throw for paths with backticks", () => {
