@@ -1,6 +1,7 @@
 import {
   checkNodeVersion,
   checkGitInstalled,
+  sanitizePath,
   cloneBoilerplate,
   createProjectDirectory,
   copyDir,
@@ -58,6 +59,84 @@ describe("CLI Utility Functions", () => {
       });
 
       expect(() => checkGitInstalled()).toThrow(/Git is not installed/);
+    });
+  });
+
+  describe("sanitizePath", () => {
+    it("should return normalized absolute path for valid input", () => {
+      const testPath = "my-project";
+      const result = sanitizePath(testPath);
+      expect(path.isAbsolute(result)).toBe(true);
+      expect(result).toContain("my-project");
+    });
+
+    it("should throw for empty string", () => {
+      expect(() => sanitizePath("")).toThrow(/non-empty string/);
+    });
+
+    it("should throw for whitespace-only string", () => {
+      expect(() => sanitizePath("   ")).toThrow(/non-empty string/);
+    });
+
+    it("should throw for non-string input", () => {
+      expect(() => sanitizePath(null as any)).toThrow(/non-empty string/);
+      expect(() => sanitizePath(undefined as any)).toThrow(/non-empty string/);
+      expect(() => sanitizePath(123 as any)).toThrow(/non-empty string/);
+    });
+
+    it("should throw for paths starting with dash", () => {
+      expect(() => sanitizePath("-my-path")).toThrow(/dangerous characters/);
+      expect(() => sanitizePath("--upload-pack")).toThrow(/dangerous characters/);
+    });
+
+    it("should throw for paths with backticks", () => {
+      expect(() => sanitizePath("path`whoami`")).toThrow(/dangerous characters/);
+    });
+
+    it("should throw for paths with command substitution", () => {
+      expect(() => sanitizePath("path$(whoami)")).toThrow(/dangerous characters/);
+    });
+
+    it("should throw for paths with shell operators", () => {
+      expect(() => sanitizePath("path|whoami")).toThrow(/dangerous characters/);
+      expect(() => sanitizePath("path;whoami")).toThrow(/dangerous characters/);
+      expect(() => sanitizePath("path&whoami")).toThrow(/dangerous characters/);
+    });
+
+    it("should throw for paths with redirects", () => {
+      expect(() => sanitizePath("path>file")).toThrow(/dangerous characters/);
+      expect(() => sanitizePath("path<file")).toThrow(/dangerous characters/);
+    });
+
+    it("should throw for paths with null bytes", () => {
+      expect(() => sanitizePath("path\0")).toThrow(/dangerous characters/);
+    });
+
+    it("should handle paths with valid special characters", () => {
+      const validPaths = [
+        "my-project",
+        "my_project",
+        "my.project",
+        "my project",
+        "project123",
+        "Project-Name_v1.0",
+      ];
+
+      validPaths.forEach((testPath) => {
+        expect(() => sanitizePath(testPath)).not.toThrow();
+      });
+    });
+
+    it("should trim whitespace from input", () => {
+      const result = sanitizePath("  my-project  ");
+      expect(result).toContain("my-project");
+      expect(result).not.toMatch(/^\s+|\s+$/);
+    });
+
+    it("should normalize path separators", () => {
+      const result = sanitizePath("my-project/./subdir/../");
+      expect(result).not.toContain("./");
+      expect(result).not.toContain("../");
     });
   });
 

@@ -4,29 +4,59 @@ import fs from "fs";
 import { execSync, execFileSync } from "child_process";
 import os from "os";
 
-// Progress display helpers
 function writeLine(msg: string): void {
   const width = process.stdout.columns || 80;
   process.stdout.write(`\r${" ".repeat(width)}\r${msg}`);
 }
+
 function clearLine(): void {
   const width = process.stdout.columns || 80;
   process.stdout.write(`\r${" ".repeat(width)}\r`);
 }
+
 function step(label: string): void {
   writeLine(label + "...");
 }
+
 function doneStep(): void {
   clearLine();
 }
 
-// Ensure required Node version
+/**
+ * Sanitizes a file path to prevent command injection attacks.
+ * Validates input, blocks dangerous characters, and returns normalized absolute path.
+ * @param inputPath - The path to sanitize
+ * @returns Sanitized absolute path
+ * @throws Error if path is invalid or contains dangerous characters
+ */
+export function sanitizePath(inputPath: string): string {
+  if (typeof inputPath !== "string" || !inputPath.trim()) {
+    throw new Error("Path must be a non-empty string");
+  }
+
+  const trimmed = inputPath.trim();
+
+  if (trimmed.startsWith("-") || /[`$|;&<>\0]/.test(trimmed)) {
+    throw new Error("Invalid path: contains dangerous characters");
+  }
+
+  return path.normalize(path.resolve(trimmed));
+}
+
+/**
+ * Checks if the current Node.js version meets the minimum required version.
+ * @param minMajor - Minimum required major version (default: 20)
+ * @throws Error if Node.js version is below the minimum required
+ */
 export function checkNodeVersion(minMajor: number = 20): void {
   const [major] = process.version.replace("v", "").split(".");
   if (Number(major) < minMajor) throw new Error(`Node.js v${minMajor}+ required`);
 }
 
-// Check if git is installed
+/**
+ * Verifies that Git is installed and available on the system.
+ * @throws Error if Git is not installed or cannot be executed
+ */
 export function checkGitInstalled(): void {
   try {
     execFileSync("git", ["--version"], { stdio: "ignore" });
@@ -35,30 +65,39 @@ export function checkGitInstalled(): void {
   }
 }
 
-// Clone the repo to a temp directory and extract the serverless folder
+/**
+ * Clones the create-stb repository to a temporary directory using sparse checkout
+ * to retrieve only the serverless template folder.
+ * @param tempDir - Temporary directory path for cloning
+ * @returns Path to the cloned serverless template directory
+ * @throws Error if git clone fails or serverless folder is not found
+ */
 export function cloneBoilerplate(tempDir: string): string {
   const repoUrl = "https://github.com/SamNewhouse/create-stb.git";
-  const clonePath = path.join(tempDir, "create-stb-temp");
 
-  if (!path.isAbsolute(clonePath) || path.basename(clonePath).startsWith("-")) {
-    throw new Error(`Unsafe clone path detected: ${clonePath}`);
-  }
+  const safeTempDir = sanitizePath(tempDir);
+  const clonePath = path.join(safeTempDir, "create-stb-temp");
+  const safeClonePath = sanitizePath(clonePath);
 
   execFileSync(
     "git",
-    ["clone", "--depth", "1", "--filter=blob:none", "--sparse", repoUrl, clonePath],
+    ["clone", "--depth", "1", "--filter=blob:none", "--sparse", repoUrl, safeClonePath],
     { stdio: "ignore" },
   );
 
   execFileSync("git", ["sparse-checkout", "set", "serverless"], {
-    cwd: clonePath,
+    cwd: safeClonePath,
     stdio: "ignore",
   });
 
-  return path.join(clonePath, "serverless");
+  return path.join(safeClonePath, "serverless");
 }
 
-// Create an empty directory (or error if not empty)
+/**
+ * Creates a new project directory, ensuring it doesn't exist or is empty.
+ * @param projectPath - Path to the project directory to create
+ * @throws Error if directory exists and is not empty
+ */
 export function createProjectDirectory(projectPath: string): void {
   if (fs.existsSync(projectPath)) {
     if (fs.readdirSync(projectPath).length === 0) return;
@@ -67,7 +106,12 @@ export function createProjectDirectory(projectPath: string): void {
   fs.mkdirSync(projectPath, { recursive: true });
 }
 
-// Recursively copy everything, including dotfiles and subfolders
+/**
+ * Recursively copies all files and directories from source to destination,
+ * including dotfiles and nested directories.
+ * @param src - Source directory path
+ * @param dest - Destination directory path
+ */
 export function copyDir(src: string, dest: string): void {
   if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
@@ -81,14 +125,22 @@ export function copyDir(src: string, dest: string): void {
   }
 }
 
-// Clean up temporary directory
+/**
+ * Removes a temporary directory and all its contents.
+ * Does not throw if directory doesn't exist.
+ * @param tempDir - Path to temporary directory to remove
+ */
 export function cleanupTemp(tempDir: string): void {
   if (fs.existsSync(tempDir)) {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 }
 
-// Only update basic project info in package.json
+/**
+ * Updates the package.json file with the new project name and description.
+ * @param projectPath - Path to the project directory
+ * @param projectName - Name for the new project
+ */
 export function updatePackageJson(projectPath: string, projectName: string): void {
   const file = path.join(projectPath, "package.json");
   if (!fs.existsSync(file)) return;
@@ -98,6 +150,11 @@ export function updatePackageJson(projectPath: string, projectName: string): voi
   fs.writeFileSync(file, JSON.stringify(pkg, null, 2));
 }
 
+/**
+ * Updates the serverless.yml file with the new service name.
+ * @param projectPath - Path to the project directory
+ * @param projectName - Name for the new service
+ */
 export function updateServerlessYml(projectPath: string, projectName: string): void {
   const serverlessPath = path.join(projectPath, "serverless.yml");
   if (!fs.existsSync(serverlessPath)) return;
@@ -106,7 +163,10 @@ export function updateServerlessYml(projectPath: string, projectName: string): v
   fs.writeFileSync(serverlessPath, content);
 }
 
-// Main CLI flow
+/**
+ * Main CLI entry point. Orchestrates the entire project scaffolding process.
+ * @throws Error if any step fails during project creation
+ */
 export async function main(): Promise<void> {
   const name = process.argv[2];
   if (!name) {
@@ -154,7 +214,7 @@ export async function main(): Promise<void> {
     doneStep();
 
     clearLine();
-    console.log(`\nInstallation complete\n\nNext steps:\n\n  cd ${name}\n  npm run offline\n`);
+    console.log(`\n✅ Installation complete!\n\nNext steps:\n\n  cd ${name}\n  npm run offline\n`);
   } catch (error) {
     cleanupTemp(tempDir);
     throw error;
@@ -164,6 +224,7 @@ export async function main(): Promise<void> {
 export default {
   checkNodeVersion,
   checkGitInstalled,
+  sanitizePath,
   cloneBoilerplate,
   createProjectDirectory,
   copyDir,
@@ -176,7 +237,7 @@ export default {
 if (require.main === module) {
   main().catch((err) => {
     clearLine();
-    console.error("Error:", err.message);
+    console.error("\n❌ Error:", err.message);
     process.exit(1);
   });
 }
