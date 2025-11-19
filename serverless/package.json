@@ -16,9 +16,8 @@
     "tables:seed": "ts-node src/scripts/seed-tables.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "3.910.0",
-    "@aws-sdk/util-dynamodb": "3.910.0",
-    "@faker-js/faker": "10.1.0",
+    "@aws-sdk/client-dynamodb": "3.932.0",
+    "@aws-sdk/util-dynamodb": "3.932.0",
     "axios": "1.13.2",
     "dotenv": "17.2.3"
   },

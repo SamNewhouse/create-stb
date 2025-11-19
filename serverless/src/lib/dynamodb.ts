@@ -11,8 +11,13 @@ import {
   DeleteItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { DYNAMODB_ENDPOINT, AWS_SECRET_ACCESS_KEY, AWS_REGION_FALLBACK } from "../config/variables";
-import { AWS_ACCESS_KEY_ID, AWS_REGION } from "../env";
+import {
+  DYNAMODB_ENDPOINT,
+  AWS_SECRET_ACCESS_KEY,
+  AWS_REGION_FALLBACK,
+  AWS_ACCESS_KEY_ID,
+  AWS_REGION,
+} from "../config/variables";
 
 /**
  * Returns a singleton DynamoDBClient configured for this environment.
@@ -29,7 +34,7 @@ export function getClient(): DynamoDBClient {
         secretAccessKey: AWS_SECRET_ACCESS_KEY || "dummy",
       };
     }
-    config.region = AWS_REGION || AWS_REGION_FALLBACK || "eu-west-2";
+    config.region = AWS_REGION || AWS_REGION_FALLBACK;
     dynamoClient = new DynamoDBClient(config);
   }
   return dynamoClient;
