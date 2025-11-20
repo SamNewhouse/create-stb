@@ -6,50 +6,27 @@
   "rebaseWhen": "behind-base-branch",
   "packageRules": [
     {
-      "description": "Root package.json dependency updates",
-      "matchFileNames": ["package.json"],
-      "matchDepTypes": ["devDependencies"],
-      "commitMessagePrefix": "[DEPENDENCY]",
-      "automerge": false,
-      "separateMultipleMajor": true
-    },
-    {
-      "description": "Group matching dependencies across root and serverless package.json",
+      "description": "Sync shared devDependencies and peerDependencies across root and template packages",
       "matchFileNames": ["package.json", "serverless/package.json"],
-      "matchDepNames": [
-        "@aws-sdk/client-dynamodb",
-        "@aws-sdk/util-dynamodb",
-        "axios",
-        "dotenv",
-        "@types/aws-lambda",
-        "@types/dotenv",
-        "@types/node",
-        "prettier",
-        "serverless",
-        "serverless-offline",
-        "typescript"
-      ],
-      "groupName": "serverless template dependencies",
-      "commitMessagePrefix": "[TEMPLATE-DEPS]",
+      "matchDepNames": ["typescript", "prettier", "@types/node"],
+      "groupName": "shared-dev-peer-deps",
+      "commitMessagePrefix": "[SYNC-SHARED-DEPS]",
       "automerge": false
     },
     {
-      "description": "Serverless-only dependencies (not in root peerDeps)",
-      "matchFileNames": ["serverless/package.json"],
-      "excludeDepNames": [
-        "@aws-sdk/client-dynamodb",
-        "@aws-sdk/util-dynamodb",
-        "axios",
-        "dotenv",
-        "@types/aws-lambda",
-        "@types/dotenv",
-        "@types/node",
-        "prettier",
-        "serverless",
-        "serverless-offline",
-        "typescript"
-      ],
-      "commitMessagePrefix": "[SERVERLESS-ONLY]",
+      "description": "Update remaining CLI-only devDependencies",
+      "matchFileNames": ["package.json"],
+      "matchDepTypes": ["devDependencies"],
+      "excludePackageNames": ["typescript", "prettier", "@types/node"],
+      "commitMessagePrefix": "[CLI-DEVDEP]",
+      "automerge": false
+    },
+    {
+      "description": "Update peerDependencies in root and serverless package.json",
+      "matchFileNames": ["package.json", "serverless/package.json"],
+      "matchDepTypes": ["peerDependencies"],
+      "excludePackageNames": ["typescript", "prettier", "@types/node"],
+      "commitMessagePrefix": "[PEERDEP]",
       "automerge": false
     }
   ]
