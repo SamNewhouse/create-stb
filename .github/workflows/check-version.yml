@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      version_updated: ${{ steps.compare.outputs.version_updated }}
-      new_version: ${{ steps.compare.outputs.new_version }}
+      version_updated: ${{ steps.bump.outputs.version_updated }}
+      new_version: ${{ steps.bump.outputs.new_version }}
 
     steps:
       - uses: actions/checkout@v5
@@ -26,66 +26,32 @@ jobs:
         with:
           node-version: "24.x"
 
-      - id: compare
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const fs = require("fs");
-
-            const branchPkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-            const branchVersion = branchPkg.version;
-
-            const mainPkg = JSON.parse(
-              await github.rest.repos.getContent({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                path: "package.json",
-                ref: "main"
-              }).then(r => Buffer.from(r.data.content, "base64").toString("utf8"))
-            );
-            const mainVersion = mainPkg.version;
-
-            const cmp = new Intl.Collator(undefined, { numeric: true }).compare;
-
-            if (cmp(branchVersion, mainVersion) > 0) {
-              core.setOutput("version_updated", "false");
-              return;
-            }
-
-            if (cmp(branchVersion, mainVersion) < 0) {
-              core.setOutput("version_updated", "false");
-              return;
-            }
-
-            const [maj, min, pat] = branchVersion.split(".").map(Number);
-            const newVersion = `${maj}.${min}.${pat + 1}`;
-            branchPkg.version = newVersion;
-
-            fs.writeFileSync("package.json", JSON.stringify(branchPkg, null, 2));
-
-            core.setOutput("version_updated", "true");
-            core.setOutput("new_version", newVersion);
-
-      - name: Update lockfile
-        if: steps.compare.outputs.version_updated == 'true'
-        run: npm install
-
-      - name: Commit bumped version
-        if: steps.compare.outputs.version_updated == 'true'
+      - id: bump
         run: |
           git config --global user.name "SamNewhouse"
           git config --global user.email "hello@samnewhouse.co.uk"
-          git add package.json package-lock.json
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
+
+          MAIN_VERSION=$(jq -r .version <(git show origin/main:package.json))
+          BRANCH_VERSION=$(jq -r .version package.json)
+
+          echo "Main version: $MAIN_VERSION"
+          echo "Branch version: $BRANCH_VERSION"
+
+          if [ "$BRANCH_VERSION" = "$MAIN_VERSION" ]; then
+            echo "Bumping patch version..."
+            NEW_VERSION=$(npm version patch -m "Changed version to %s" | tr -d 'v')
+            git push origin HEAD:${GITHUB_HEAD_REF}
+            echo "version_updated=true" >> $GITHUB_ENV
+            echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
+            echo "::set-output name=version_updated::true"
+            echo "::set-output name=new_version::$NEW_VERSION"
           else
-            git commit -m "Changed version to ${{ steps.compare.outputs.new_version }}"
-            git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/SamNewhouse/create-stb.git
-            git pull --rebase origin ${{ github.head_ref }}
-            git push origin HEAD:${{ github.head_ref }}
+            echo "Skipping version bump (PR version differs from main)."
+            echo "version_updated=false" >> $GITHUB_ENV
+            echo "::set-output name=version_updated::false"
           fi
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
 
       - name: Success
         run: echo "Version check completed."
