@@ -20,6 +20,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -31,7 +33,9 @@ jobs:
           git config --global user.name "SamNewhouse"
           git config --global user.email "hello@samnewhouse.co.uk"
 
-          MAIN_VERSION=$(jq -r .version <(git show origin/main:package.json))
+          git fetch origin main:main
+
+          MAIN_VERSION=$(jq -r .version <(git show main:package.json))
           BRANCH_VERSION=$(jq -r .version package.json)
 
           echo "Main version: $MAIN_VERSION"
@@ -43,13 +47,9 @@ jobs:
             git push origin HEAD:${GITHUB_HEAD_REF}
             echo "version_updated=true" >> $GITHUB_ENV
             echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
-            echo "::set-output name=version_updated::true"
-            echo "::set-output name=new_version::$NEW_VERSION"
           else
             echo "Skipping version bump (PR version differs from main)."
             echo "version_updated=false" >> $GITHUB_ENV
-            echo "::set-output name=version_updated::false"
-          fi
         env:
           GITHUB_HEAD_REF: ${{ github.head_ref }}
 
