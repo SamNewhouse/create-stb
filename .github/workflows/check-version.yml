@@ -13,60 +13,54 @@ permissions:
 jobs:
   check_version:
     runs-on: ubuntu-latest
+    outputs:
+      version_updated: ${{ steps.compare_versions.outputs.version_updated }}
 
     steps:
-      - name: Checkout the repository
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "24.x"
 
-      - name: Get package.json version from main branch
-        id: main_version
+      - id: compare_versions
         run: |
           git fetch origin main
           main_version=$(jq -r .version <(git show origin/main:package.json))
-          echo "main_version=$main_version" >> $GITHUB_ENV
-
-      - name: Get package.json version from current branch
-        id: current_version
-        run: |
           branch_version=$(jq -r .version package.json)
-          echo "branch_version=$branch_version" >> $GITHUB_ENV
 
-      - name: Compare versions and update if necessary
-        id: compare_versions
-        run: |
           if [ "$branch_version" = "$main_version" ]; then
             IFS='.' read -r major minor patch <<< "$branch_version"
             patch=$((patch + 1))
             new_version="$major.$minor.$patch"
-            echo "New version: $new_version"
             jq --arg new_version "$new_version" '.version = $new_version' package.json > package.json.tmp && mv package.json.tmp package.json
-            echo "Version updated to $new_version"
             echo "version_updated=true" >> $GITHUB_ENV
             echo "new_version=$new_version" >> $GITHUB_ENV
+            echo "::set-output name=version_updated::true"
           else
-            echo "Versions are different. No update needed."
             echo "version_updated=false" >> $GITHUB_ENV
+            echo "::set-output name=version_updated::false"
           fi
 
       - name: Update version in package-lock
-        if: env.version_updated == 'true'
+        if: steps.compare_versions.outputs.version_updated == 'true'
         run: npm install
 
       - name: Commit version bump
-        if: env.version_updated == 'true'
+        if: steps.compare_versions.outputs.version_updated == 'true'
         run: |
           git config --global user.name "SamNewhouse"
           git config --global user.email "hello@samnewhouse.co.uk"
           git add package.json package-lock.json
-          git commit -m "Changed version to ${{ env.new_version }}"
-          git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/SamNewhouse/create-stb.git
-          git pull --rebase origin ${{ github.head_ref }}
-          git push origin HEAD:${{ github.head_ref }}
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Changed version to ${{ env.new_version }}"
+            git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/SamNewhouse/create-stb.git
+            git pull --rebase origin ${{ github.head_ref }}
+            git push origin HEAD:${{ github.head_ref }}
+          fi
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
