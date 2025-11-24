@@ -13,22 +13,25 @@ permissions:
 jobs:
   check_version:
     runs-on: ubuntu-latest
-    outputs:
-      version_updated: ${{ steps.compare_versions.outputs.version_updated }}
-
     steps:
       - uses: actions/checkout@v5
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: "24.x"
 
-      - id: compare_versions
+      - id: bump_version_if_needed
         run: |
+          set -e
           git fetch origin main
           main_version=$(jq -r .version <(git show origin/main:package.json))
           branch_version=$(jq -r .version package.json)
+
+          if [ "$(printf '%s\n' "$main_version" "$branch_version" | sort -V | head -n1)" = "$main_version" ] && [ "$branch_version" != "$main_version" ]; then
+            echo "No version bump needed."
+            echo "version_updated=false" >> $GITHUB_ENV
+            exit 0
+          fi
 
           if [ "$branch_version" = "$main_version" ]; then
             IFS='.' read -r major minor patch <<< "$branch_version"
@@ -37,30 +40,27 @@ jobs:
             jq --arg new_version "$new_version" '.version = $new_version' package.json > package.json.tmp && mv package.json.tmp package.json
             echo "version_updated=true" >> $GITHUB_ENV
             echo "new_version=$new_version" >> $GITHUB_ENV
-            echo "::set-output name=version_updated::true"
-          else
-            echo "version_updated=false" >> $GITHUB_ENV
-            echo "::set-output name=version_updated::false"
+            exit 0
           fi
 
-      - name: Update version in package-lock
-        if: steps.compare_versions.outputs.version_updated == 'true'
+          echo "Warning: PR version ($branch_version) is behind main ($main_version)."
+          echo "version_updated=false" >> $GITHUB_ENV
+          exit 0
+
+      - name: Update package-lock if needed
+        if: env.version_updated == 'true'
         run: npm install
 
       - name: Commit version bump
-        if: steps.compare_versions.outputs.version_updated == 'true'
+        if: env.version_updated == 'true'
         run: |
           git config --global user.name "SamNewhouse"
           git config --global user.email "hello@samnewhouse.co.uk"
           git add package.json package-lock.json
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Changed version to ${{ env.new_version }}"
-            git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/SamNewhouse/create-stb.git
-            git pull --rebase origin ${{ github.head_ref }}
-            git push origin HEAD:${{ github.head_ref }}
-          fi
+          git commit -m "Changed version to ${{ env.new_version }}"
+          git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/SamNewhouse/create-stb.git
+          git pull --rebase origin ${{ github.head_ref }}
+          git push origin HEAD:${{ github.head_ref }}
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
