@@ -50,6 +50,7 @@ jobs:
           else
             echo "Skipping version bump (PR version differs from main)."
             echo "version_updated=false" >> $GITHUB_ENV
+          fi
         env:
           GITHUB_HEAD_REF: ${{ github.head_ref }}
 
