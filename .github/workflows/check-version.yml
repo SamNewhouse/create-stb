@@ -41,14 +41,25 @@ jobs:
           echo "Main version: $MAIN_VERSION"
           echo "Branch version: $BRANCH_VERSION"
 
-          if [ "$BRANCH_VERSION" = "$MAIN_VERSION" ]; then
-            echo "Bumping patch version..."
+          parse_version() {
+            IFS='.' read -r maj min patch <<< "$1"
+            printf "%03d%03d%03d\n" "$maj" "$min" "$patch"
+          }
+
+          MAIN_NUM=$(parse_version "$MAIN_VERSION")
+          BRANCH_NUM=$(parse_version "$BRANCH_VERSION")
+
+          if [ "$BRANCH_NUM" -gt "$MAIN_NUM" ]; then
+            echo "PR version is already ahead of main. Skipping bump."
+            echo "version_updated=false" >> $GITHUB_ENV
+          elif [ "$BRANCH_NUM" -eq "$MAIN_NUM" ]; then
+            echo "Versions equal. Bumping patch..."
             NEW_VERSION=$(npm version patch -m "Changed version to %s" | tr -d 'v')
             git push origin HEAD:${GITHUB_HEAD_REF}
             echo "version_updated=true" >> $GITHUB_ENV
             echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
           else
-            echo "Skipping version bump (PR version differs from main)."
+            echo "PR version behind main. Skipping bump."
             echo "version_updated=false" >> $GITHUB_ENV
           fi
         env:
