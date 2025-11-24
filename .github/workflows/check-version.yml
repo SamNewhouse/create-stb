@@ -31,7 +31,6 @@ jobs:
         with:
           script: |
             const fs = require("fs");
-            const semver = require("semver");
 
             const branchPkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
             const branchVersion = branchPkg.version;
@@ -46,6 +45,8 @@ jobs:
             );
             const mainVersion = mainPkg.version;
 
+            const cmp = new Intl.Collator(undefined, { numeric: true }).compare;
+
             const commits = await github.rest.pulls.listCommits({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -55,13 +56,13 @@ jobs:
             let bumpedBefore = false;
 
             for (const commit of commits.data) {
-              const filesChanged = await github.rest.repos.getCommit({
+              const det = await github.rest.repos.getCommit({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 ref: commit.sha
               });
 
-              for (const f of filesChanged.data.files) {
+              for (const f of det.data.files) {
                 if (f.filename === "package.json" && f.patch?.includes('"version"')) {
                   bumpedBefore = true;
                   break;
@@ -75,15 +76,16 @@ jobs:
               return;
             }
 
-            if (semver.gt(branchVersion, mainVersion)) {
+            if (cmp(branchVersion, mainVersion) > 0) {
               core.setOutput("version_updated", "false");
               return;
             }
 
-            if (semver.eq(branchVersion, mainVersion)) {
-              const newVersion = semver.inc(branchVersion, "patch");
-              branchPkg.version = newVersion;
+            if (cmp(branchVersion, mainVersion) === 0) {
+              const [maj, min, pat] = branchVersion.split(".").map(Number);
+              const newVersion = `${maj}.${min}.${pat + 1}`;
 
+              branchPkg.version = newVersion;
               fs.writeFileSync("package.json", JSON.stringify(branchPkg, null, 2));
 
               core.setOutput("version_updated", "true");
@@ -102,9 +104,7 @@ jobs:
         run: |
           git config --global user.name "SamNewhouse"
           git config --global user.email "hello@samnewhouse.co.uk"
-
           git add package.json package-lock.json
-
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
