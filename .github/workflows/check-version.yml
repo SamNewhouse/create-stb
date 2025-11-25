@@ -34,19 +34,14 @@ jobs:
       - name: Get versions
         id: get_versions
         run: |
-          MAIN_VERSION=$(jq -r .version <(git show main:package.json))
-          BRANCH_VERSION=$(jq -r .version package.json)
-          echo "MAIN_VERSION=$MAIN_VERSION" >> $GITHUB_ENV
-          echo "BRANCH_VERSION=$BRANCH_VERSION" >> $GITHUB_ENV
-          echo "Main version: $MAIN_VERSION"
-          echo "Branch version: $BRANCH_VERSION"
+          echo "MAIN_VERSION=$(jq -r .version <(git show main:package.json))" >> $GITHUB_ENV
+          echo "BRANCH_VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
 
       - name: Check temporary tag
         id: check_tag
         run: |
           TAG_NAME="pr-bump-${BRANCH_VERSION}"
           if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-            echo "Temporary tag $TAG_NAME exists. Skipping bump."
             echo "tag_exists=true" >> $GITHUB_ENV
           else
             echo "tag_exists=false" >> $GITHUB_ENV
@@ -64,13 +59,10 @@ jobs:
           BRANCH_NUM=$(parse_version "$BRANCH_VERSION")
 
           if [ "$BRANCH_NUM" -gt "$MAIN_NUM" ]; then
-            echo "PR version is ahead of main. Skipping bump."
             echo "version_updated=false" >> $GITHUB_ENV
           elif [ "$BRANCH_NUM" -eq "$MAIN_NUM" ] && [ "$tag_exists" != "true" ]; then
-            echo "Versions equal and tag not found. Will bump patch."
             echo "version_updated=true" >> $GITHUB_ENV
           else
-            echo "PR version behind main or bump already done. Skipping bump."
             echo "version_updated=false" >> $GITHUB_ENV
           fi
 
@@ -79,10 +71,9 @@ jobs:
         run: |
           git config --global user.name "SamNewhouse"
           git config --global user.email "hello@samnewhouse.co.uk"
-          NEW_VERSION=$(npm version patch -m "Changed version to %s" | tr -d 'v')
+          NEW_VERSION=$(npm version patch -m "v%s" | tr -d 'v')
           echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
 
-          # Create temporary tag
           TAG_NAME="pr-bump-${BRANCH_VERSION}"
           git tag "$TAG_NAME"
           git push origin HEAD:${GITHUB_HEAD_REF} --tags
