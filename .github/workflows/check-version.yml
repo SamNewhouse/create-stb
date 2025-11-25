@@ -31,40 +31,36 @@ jobs:
         id: get_versions
         run: |
           MAIN_VERSION=$(jq -r .version <(git show main:package.json))
-          PR_VERSION=$(jq -r .version package.json)
+          BRANCH_VERSION=$(jq -r .version package.json)
           echo "MAIN_VERSION=$MAIN_VERSION" >> $GITHUB_ENV
-          echo "PR_VERSION=$PR_VERSION" >> $GITHUB_ENV
+          echo "BRANCH_VERSION=$BRANCH_VERSION" >> $GITHUB_ENV
+          echo "Main version: $MAIN_VERSION"
+          echo "Branch version: $BRANCH_VERSION"
 
-      - name: Decide if bump needed
+      - name: Decide if patch bump needed
         id: decide_bump
         run: |
-          if [ "$PR_VERSION" \> "$MAIN_VERSION" ]; then
-            echo "bump_needed=false" >> $GITHUB_ENV
-            exit 0
-          fi
-
           IFS='.' read -r maj min pat <<< "$MAIN_VERSION"
           NEXT_PATCH=$((pat + 1))
           NEXT_VERSION="${maj}.${min}.${NEXT_PATCH}"
-          LAST_BUMP_COMMIT=$(git log origin/${GITHUB_HEAD_REF} --grep="^v" --pretty=format:"%s" -1)
-
-          if [ "$LAST_BUMP_COMMIT" = "v$NEXT_VERSION" ]; then
-            echo "bump_needed=false" >> $GITHUB_ENV
-          else
-            echo "bump_needed=true" >> $GITHUB_ENV
+          if [ "$BRANCH_VERSION" = "$MAIN_VERSION" ]; then
+            echo "version_updated=true" >> $GITHUB_ENV
             echo "new_version=$NEXT_VERSION" >> $GITHUB_ENV
+            echo "Patch bump needed: $NEXT_VERSION"
+          else
+            echo "version_updated=false" >> $GITHUB_ENV
+            echo "Patch bump not needed"
           fi
-        env:
-          GITHUB_HEAD_REF: ${{ github.head_ref }}
 
       - name: Bump patch version
-        if: env.bump_needed == 'true'
+        if: env.version_updated == 'true'
         run: |
           git config --global user.name "SamNewhouse"
           git config --global user.email "hello@samnewhouse.co.uk"
 
           NEW_VERSION=${{ env.new_version }}
           npm version "$NEW_VERSION" --no-git-tag-version
+
           git add package.json package-lock.json
           git commit -m "v$NEW_VERSION"
           git push origin HEAD:${GITHUB_HEAD_REF}
