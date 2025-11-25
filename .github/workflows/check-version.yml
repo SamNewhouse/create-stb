@@ -28,20 +28,29 @@ jobs:
         with:
           node-version: "24.x"
 
-      - name: Fetch main branch
+      - name: Fetch main branch and tags
         run: git fetch origin main:main --tags
 
       - name: Get versions
         id: get_versions
         run: |
-          echo "MAIN_VERSION=$(jq -r .version <(git show main:package.json))" >> $GITHUB_ENV
-          echo "BRANCH_VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
+          MAIN_VERSION=$(jq -r .version <(git show main:package.json))
+          BRANCH_VERSION=$(jq -r .version package.json)
+          echo "MAIN_VERSION=$MAIN_VERSION" >> $GITHUB_ENV
+          echo "BRANCH_VERSION=$BRANCH_VERSION" >> $GITHUB_ENV
 
-      - name: Check temporary tag
+      - name: Calculate next patch version
+        id: next_version
+        run: |
+          IFS='.' read -r maj min pat <<< "$MAIN_VERSION"
+          NEXT_PATCH=$((pat + 1))
+          NEXT_VERSION="${maj}.${min}.${NEXT_PATCH}"
+          echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
+
+      - name: Check if next version tag exists
         id: check_tag
         run: |
-          TAG_NAME="pr-bump-${BRANCH_VERSION}"
-          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+          if git rev-parse "v$NEXT_VERSION" >/dev/null 2>&1; then
             echo "tag_exists=true" >> $GITHUB_ENV
           else
             echo "tag_exists=false" >> $GITHUB_ENV
@@ -50,18 +59,9 @@ jobs:
       - name: Decide if bump needed
         id: decide_bump
         run: |
-          parse_version() {
-            IFS='.' read -r maj min patch <<< "$1"
-            printf "%03d%03d%03d\n" "$maj" "$min" "$patch"
-          }
-
-          MAIN_NUM=$(parse_version "$MAIN_VERSION")
-          BRANCH_NUM=$(parse_version "$BRANCH_VERSION")
-
-          if [ "$BRANCH_NUM" -gt "$MAIN_NUM" ]; then
-            echo "version_updated=false" >> $GITHUB_ENV
-          elif [ "$BRANCH_NUM" -eq "$MAIN_NUM" ] && [ "$tag_exists" != "true" ]; then
+          if [ "$BRANCH_VERSION" = "$MAIN_VERSION" ] && [ "$tag_exists" != "true" ]; then
             echo "version_updated=true" >> $GITHUB_ENV
+            echo "new_version=$NEXT_VERSION" >> $GITHUB_ENV
           else
             echo "version_updated=false" >> $GITHUB_ENV
           fi
@@ -71,11 +71,9 @@ jobs:
         run: |
           git config --global user.name "SamNewhouse"
           git config --global user.email "hello@samnewhouse.co.uk"
-          NEW_VERSION=$(npm version patch -m "v%s" | tr -d 'v')
-          echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
-
-          TAG_NAME="pr-bump-${BRANCH_VERSION}"
-          git tag "$TAG_NAME"
+          NEW_VERSION=${{ env.new_version }}
+          npm version "$NEW_VERSION" -m "v%s"
+          git tag "v$NEW_VERSION"
           git push origin HEAD:${GITHUB_HEAD_REF} --tags
         env:
           GITHUB_HEAD_REF: ${{ github.head_ref }}
