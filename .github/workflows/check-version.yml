@@ -14,10 +14,6 @@ jobs:
   check_version:
     runs-on: ubuntu-latest
 
-    outputs:
-      version_updated: ${{ steps.decide_bump.outputs.version_updated }}
-      new_version: ${{ steps.decide_bump.outputs.new_version }}
-
     steps:
       - uses: actions/checkout@v5
         with:
@@ -47,10 +43,10 @@ jobs:
           NEXT_VERSION="${maj}.${min}.${NEXT_PATCH}"
           echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
 
-      - name: Check if next version tag exists on this branch
+      - name: Check if main version tag exists
         id: check_tag
         run: |
-          if git tag --points-at HEAD | grep -q "v$NEXT_VERSION"; then
+          if git rev-parse "v$MAIN_VERSION" >/dev/null 2>&1; then
             echo "tag_exists=true" >> $GITHUB_ENV
           else
             echo "tag_exists=false" >> $GITHUB_ENV
@@ -67,7 +63,7 @@ jobs:
           fi
 
       - name: Bump patch version
-        if: env.version_updated == 'true' && env.tag_exists != 'true'
+        if: env.version_updated == 'true'
         run: |
           git config --global user.name "SamNewhouse"
           git config --global user.email "hello@samnewhouse.co.uk"
