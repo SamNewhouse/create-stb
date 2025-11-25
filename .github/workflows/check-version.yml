@@ -16,7 +16,7 @@ jobs:
 
     outputs:
       version_updated: ${{ steps.decide_bump.outputs.version_updated }}
-      new_version: ${{ steps.bump.outputs.new_version }}
+      new_version: ${{ steps.decide_bump.outputs.new_version }}
 
     steps:
       - uses: actions/checkout@v5
@@ -28,41 +28,55 @@ jobs:
         with:
           node-version: "24.x"
 
-      - name: Get versions
-        id: decide_bump
-        run: |
-          MAIN_VERSION=$(jq -r .version <(git show origin/main:package.json))
-          BRANCH_VERSION=$(jq -r .version package.json)
+      - name: Fetch main branch and tags
+        run: git fetch origin main:main --tags
 
+      - name: Get versions
+        id: get_versions
+        run: |
+          MAIN_VERSION=$(jq -r .version <(git show main:package.json))
+          BRANCH_VERSION=$(jq -r .version package.json)
           echo "MAIN_VERSION=$MAIN_VERSION" >> $GITHUB_ENV
           echo "BRANCH_VERSION=$BRANCH_VERSION" >> $GITHUB_ENV
 
-          if [ "$BRANCH_VERSION" = "$MAIN_VERSION" ]; then
+      - name: Calculate next patch version
+        id: next_version
+        run: |
+          IFS='.' read -r maj min pat <<< "$MAIN_VERSION"
+          NEXT_PATCH=$((pat + 1))
+          NEXT_VERSION="${maj}.${min}.${NEXT_PATCH}"
+          echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
+
+      - name: Check if next version tag exists on this branch
+        id: check_tag
+        run: |
+          if git tag --points-at HEAD | grep -q "v$NEXT_VERSION"; then
+            echo "tag_exists=true" >> $GITHUB_ENV
+          else
+            echo "tag_exists=false" >> $GITHUB_ENV
+          fi
+
+      - name: Decide if bump needed
+        id: decide_bump
+        run: |
+          if [ "$BRANCH_VERSION" = "$MAIN_VERSION" ] && [ "$tag_exists" != "true" ]; then
             echo "version_updated=true" >> $GITHUB_ENV
+            echo "new_version=$NEXT_VERSION" >> $GITHUB_ENV
           else
             echo "version_updated=false" >> $GITHUB_ENV
           fi
 
-      - name: Configure Git user
+      - name: Bump patch version
         if: env.version_updated == 'true'
         run: |
           git config --global user.name "SamNewhouse"
           git config --global user.email "hello@samnewhouse.co.uk"
-
-      - name: Bump patch version
-        if: env.version_updated == 'true'
-        id: bump
-        uses: phips28/gh-action-bump-version@v9
-        with:
-          tag-prefix: "v"
-          commit-message: "v%s"
-          files: |
-            package.json
-            package-lock.json
-          bump: patch
-          create-tag: true
+          NEW_VERSION=${{ env.new_version }}
+          npm version "$NEW_VERSION" -m "v%s"
+          git tag "v$NEW_VERSION"
+          git push origin HEAD:${GITHUB_HEAD_REF} --tags
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
 
       - name: Success
         run: echo "Version check completed."
