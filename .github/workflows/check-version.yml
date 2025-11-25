@@ -2,7 +2,7 @@ name: Check version
 
 on:
   pull_request:
-    types: [synchronize, opened, reopened]
+    types: [opened, reopened, synchronize]
     paths-ignore:
       - ".github/workflows/**"
       - "renovate.json"
@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      version_updated: ${{ steps.bump.outputs.version_updated }}
-      new_version: ${{ steps.bump.outputs.new_version }}
+      version_updated: ${{ steps.decide_bump.outputs.version_updated }}
+      new_version: ${{ steps.decide_bump.outputs.new_version }}
 
     steps:
       - uses: actions/checkout@v5
@@ -28,19 +28,22 @@ jobs:
         with:
           node-version: "24.x"
 
-      - id: bump
+      - name: Fetch main branch
+        run: git fetch origin main:main
+
+      - name: Get versions
+        id: get_versions
         run: |
-          git config --global user.name "SamNewhouse"
-          git config --global user.email "hello@samnewhouse.co.uk"
-
-          git fetch origin main:main
-
           MAIN_VERSION=$(jq -r .version <(git show main:package.json))
           BRANCH_VERSION=$(jq -r .version package.json)
-
+          echo "MAIN_VERSION=$MAIN_VERSION" >> $GITHUB_ENV
+          echo "BRANCH_VERSION=$BRANCH_VERSION" >> $GITHUB_ENV
           echo "Main version: $MAIN_VERSION"
           echo "Branch version: $BRANCH_VERSION"
 
+      - name: Decide if bump needed
+        id: decide_bump
+        run: |
           parse_version() {
             IFS='.' read -r maj min patch <<< "$1"
             printf "%03d%03d%03d\n" "$maj" "$min" "$patch"
@@ -50,18 +53,24 @@ jobs:
           BRANCH_NUM=$(parse_version "$BRANCH_VERSION")
 
           if [ "$BRANCH_NUM" -gt "$MAIN_NUM" ]; then
-            echo "PR version is already ahead of main. Skipping bump."
+            echo "PR version is ahead of main. Skipping bump."
             echo "version_updated=false" >> $GITHUB_ENV
           elif [ "$BRANCH_NUM" -eq "$MAIN_NUM" ]; then
-            echo "Versions equal. Bumping patch..."
-            NEW_VERSION=$(npm version patch -m "Changed version to %s" | tr -d 'v')
-            git push origin HEAD:${GITHUB_HEAD_REF}
+            echo "Versions equal. Will bump patch."
             echo "version_updated=true" >> $GITHUB_ENV
-            echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
           else
             echo "PR version behind main. Skipping bump."
             echo "version_updated=false" >> $GITHUB_ENV
           fi
+
+      - name: Bump patch version
+        if: env.version_updated == 'true'
+        run: |
+          git config --global user.name "SamNewhouse"
+          git config --global user.email "hello@samnewhouse.co.uk"
+          NEW_VERSION=$(npm version patch -m "Changed version to %s" | tr -d 'v')
+          echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
+          git push origin HEAD:${GITHUB_HEAD_REF}
         env:
           GITHUB_HEAD_REF: ${{ github.head_ref }}
 
