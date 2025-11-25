@@ -43,10 +43,10 @@ jobs:
           NEXT_VERSION="${maj}.${min}.${NEXT_PATCH}"
           echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
 
-      - name: Check if main version tag exists
+      - name: Check if next patch tag exists on branch
         id: check_tag
         run: |
-          if git rev-parse "v$MAIN_VERSION" >/dev/null 2>&1; then
+          if git tag --points-at HEAD | grep -q "v$NEXT_VERSION"; then
             echo "tag_exists=true" >> $GITHUB_ENV
           else
             echo "tag_exists=false" >> $GITHUB_ENV
