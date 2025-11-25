@@ -29,7 +29,7 @@ jobs:
           node-version: "24.x"
 
       - name: Fetch main branch
-        run: git fetch origin main:main
+        run: git fetch origin main:main --tags
 
       - name: Get versions
         id: get_versions
@@ -40,6 +40,17 @@ jobs:
           echo "BRANCH_VERSION=$BRANCH_VERSION" >> $GITHUB_ENV
           echo "Main version: $MAIN_VERSION"
           echo "Branch version: $BRANCH_VERSION"
+
+      - name: Check temporary tag
+        id: check_tag
+        run: |
+          TAG_NAME="pr-bump-${BRANCH_VERSION}"
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Temporary tag $TAG_NAME exists. Skipping bump."
+            echo "tag_exists=true" >> $GITHUB_ENV
+          else
+            echo "tag_exists=false" >> $GITHUB_ENV
+          fi
 
       - name: Decide if bump needed
         id: decide_bump
@@ -55,11 +66,11 @@ jobs:
           if [ "$BRANCH_NUM" -gt "$MAIN_NUM" ]; then
             echo "PR version is ahead of main. Skipping bump."
             echo "version_updated=false" >> $GITHUB_ENV
-          elif [ "$BRANCH_NUM" -eq "$MAIN_NUM" ]; then
-            echo "Versions equal. Will bump patch."
+          elif [ "$BRANCH_NUM" -eq "$MAIN_NUM" ] && [ "$tag_exists" != "true" ]; then
+            echo "Versions equal and tag not found. Will bump patch."
             echo "version_updated=true" >> $GITHUB_ENV
           else
-            echo "PR version behind main. Skipping bump."
+            echo "PR version behind main or bump already done. Skipping bump."
             echo "version_updated=false" >> $GITHUB_ENV
           fi
 
@@ -70,7 +81,11 @@ jobs:
           git config --global user.email "hello@samnewhouse.co.uk"
           NEW_VERSION=$(npm version patch -m "Changed version to %s" | tr -d 'v')
           echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
-          git push origin HEAD:${GITHUB_HEAD_REF}
+
+          # Create temporary tag
+          TAG_NAME="pr-bump-${BRANCH_VERSION}"
+          git tag "$TAG_NAME"
+          git push origin HEAD:${GITHUB_HEAD_REF} --tags
         env:
           GITHUB_HEAD_REF: ${{ github.head_ref }}
 
