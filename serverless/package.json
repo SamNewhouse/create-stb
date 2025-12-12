@@ -24,7 +24,7 @@
   "devDependencies": {
     "@types/aws-lambda": "8.10.159",
     "@types/dotenv": "8.2.3",
-    "@types/node": "24.10.1",
+    "@types/node": "24.10.3",
     "prettier": "3.7.4",
     "serverless": "4.27.1",
     "serverless-offline": "14.4.0",
